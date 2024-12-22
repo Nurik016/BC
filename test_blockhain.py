@@ -1,6 +1,36 @@
 import pytest
 from hashlib import sha256 as hash256
 from blockhain import sha256, merkle_tree
+import time
+
+
+class Block:
+    def __init__(self, index, previous_hash, transactions):
+        self.index = index
+        self.previous_hash = previous_hash
+        self.timestamp = time.time()
+        self.transactions = transactions
+        self.merkle_root = merkle_tree([sha256(tx) for tx in transactions])
+        self.nonce = 0
+        self.hash = self.calculate_hash()
+
+    def calculate_hash(self):
+        block_data = (
+            str(self.index)
+            + self.previous_hash
+            + str(self.timestamp)
+            + self.merkle_root
+            + str(self.nonce)
+        )
+        return sha256(block_data)
+
+    def mine_block(self, difficulty):
+        target = "0" * difficulty
+        while not self.hash.startswith(target):
+            self.nonce += 1
+            self.hash = self.calculate_hash()
+
+
 
 
 def test_hash():

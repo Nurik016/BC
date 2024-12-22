@@ -1,3 +1,4 @@
+import time
 class Block:
     def __init__(self, index, previous_hash, transactions):
         self.index = index
