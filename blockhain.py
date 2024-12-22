@@ -8,7 +8,7 @@ class Block:
         self.merkle_root = merkle_tree([sha256(tx) for tx in transactions])
         self.nonce = 0
         self.hash = self.calculate_hash()
-
+#Pushing
     def calculate_hash(self):
         block_data = (
             str(self.index)
