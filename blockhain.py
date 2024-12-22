@@ -1,6 +1,8 @@
 def right_rotate(value, bits):
     return ((value >> bits) | (value << (32 - bits))) & 0xFFFFFFFF
 
+# test commit
+
 def sha256(text):
     # Constants defined by the SHA-256 standard
     k = [
