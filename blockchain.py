@@ -1,9 +1,10 @@
 import time
+import random
+from math import gcd
 
 
 def right_rotate(value, bits):
     return ((value >> bits) | (value << (32 - bits))) & 0xFFFFFFFF
-
 
 
 def sha256(text):
@@ -95,6 +96,75 @@ def merkle_tree(transactions):
     return merkle_tree(new_level)
 
 
+# Helper functions for RSA
+def is_prime(num):
+    if num <= 1:
+        return False
+    if num <= 3:
+        return True
+    if num % 2 == 0 or num % 3 == 0:
+        return False
+    i = 5
+    while i * i <= num:
+        if num % i == 0 or num % (i + 2) == 0:
+            return False
+        i += 6
+    return True
+
+
+def generate_prime(bits=32):
+    while True:
+        num = random.getrandbits(bits)
+        if is_prime(num):
+            return num
+
+
+# Key generation
+def generate_keypair():
+    p = generate_prime()
+    q = generate_prime()
+    while p == q:
+        q = generate_prime()
+
+    n = p * q
+    phi = (p - 1) * (q - 1)
+
+    e = random.randrange(2, phi)
+    while gcd(e, phi) != 1:
+        e = random.randrange(2, phi)
+
+    d = pow(e, -1, phi)
+
+    return ((e, n), (d, n))
+
+# Encryption and decryption
+
+def encrypt(public_key, message):
+    e, n = public_key
+    cipher = [pow(ord(char), e, n) for char in message]
+    return cipher
+
+def decrypt(private_key, ciphertext):
+    d, n = private_key
+    plain = ''.join([chr(pow(char, d, n)) for char in ciphertext])
+    return plain
+
+# Digital signature
+
+def sign(private_key, document):
+    d, n = private_key
+    hash_value = hash(document)
+    signature = pow(hash_value, d, n)
+    return signature
+
+def verify(public_key, document, signature):
+    e, n = public_key
+    hash_value = hash(document)
+    decrypted_hash = pow(signature, e, n)
+    return hash_value == decrypted_hash
+
+
+# Block Class
 class Block:
     def __init__(self, index, previous_hash, transactions):
         self.index = index
@@ -104,7 +174,7 @@ class Block:
         self.merkle_root = merkle_tree([sha256(tx) for tx in transactions])
         self.nonce = 0
         self.hash = self.calculate_hash()
-#Pushing
+
     def calculate_hash(self):
         block_data = (
             str(self.index)
@@ -117,11 +187,17 @@ class Block:
 
     def mine_block(self, difficulty):
         target = "0" * difficulty
+        start_time = time.time()
         while not self.hash.startswith(target):
             self.nonce += 1
             self.hash = self.calculate_hash()
+            if self.nonce % 100000 == 0:
+                print(f"Nonce: {self.nonce}, Hash: {self.hash}")
+        end_time = time.time()
+        print(f"Block mined! Nonce: {self.nonce}, Hash: {self.hash}, Time: {end_time - start_time:.2f}s")
 
 
+# Blockchain Class
 class Blockchain:
     def __init__(self, difficulty=4):
         self.chain = [self.create_genesis_block()]
@@ -141,19 +217,36 @@ class Blockchain:
             current_block = self.chain[i]
             previous_block = self.chain[i - 1]
 
-            # Checking hash
             if current_block.hash != current_block.calculate_hash():
                 return False
 
-            # Checking the link to the previous block
             if current_block.previous_hash != previous_block.hash:
                 return False
 
-            # Checking the root of tree
             recalculated_merkle_root = merkle_tree([sha256(tx) for tx in current_block.transactions])
             if current_block.merkle_root != recalculated_merkle_root:
                 return False
 
         return True
 
+# Transaction Class
+class Transaction:
+    def __init__(self, sender, receiver, amount, signature):
+        self.sender = sender
+        self.receiver = receiver
+        self.amount = amount
+        self.signature = signature
+
+    def verify_transaction(self):
+        return verify(self.sender, f"{self.receiver}{self.amount}", self.signature)
+
+# Wallet Class
+class Wallet:
+    def __init__(self):
+        self.private_key, self.public_key = generate_keypair()
+
+    def create_transaction(self, receiver, amount):
+        document = f"{receiver}{amount}"
+        signature = sign(self.private_key, document)
+        return Transaction(self.public_key, receiver, amount, signature)
 
